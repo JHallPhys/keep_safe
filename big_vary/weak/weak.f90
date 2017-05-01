@@ -149,17 +149,15 @@ if (my_rank.eq.0) root = .true.
 ! open input file on the root process 
 ! input file name: " array.dat "
 time_start = MPI_wtime()
+
 if (root) then 
   
-  print*, 'No procs:',num_procs
-  print*,
-
 
   ! now lets set up the ellipsoid. We will work with the vals form Q5
   ! rx=ry=10nm ; rz=20nm
 
-  major = 9
-  minor = 9
+  major = 15*num_procs
+  minor = 15
 
   dim_x = minor
   dim_y = minor
@@ -171,9 +169,7 @@ if (root) then
   allocate (grid(-dim_x:dim_x,-dim_y:dim_y,-dim_z:dim_z),stat=ierror)
   if (ierror.ne.0) stop 'problem allocating grid'
 
-
   grid(:,:,:) = 1.0_dp
-  
   fname = 'geom_init'//trim(id_str(num_procs))//'.dat'
   open(file=fname,unit=10,status='replace')
 
@@ -279,22 +275,18 @@ split(3) = floor(real(2*dim_z+1,kind=dp)/real(num_procs,kind=dp))
 
 if (my_rank.lt.(num_procs-1)) then
 
-  !???????????????????????????????????????????????????????
- ! rank_id = 20 + my_rank
- ! fname = 'points_rank'//trim(id_str(my_rank))//'.dat'
- ! open(file=fname,unit=rank_id,status='replace') ! unique file for each rank
-  !???????????????????????????????????????????????????????
 
-  print*, split(3)
-  print*, sum(grid)/2.0_dp
   max_it(:) = (split(:)*(my_rank+1))
   start_it(:) = (split(:)*my_rank)
+
   print*, my_rank,sum(grid(-dim_x:dim_x,-dim_y:dim_y,-dim_z+start_it(3):-dim_z+max_it(3)-1))
+
+
   do l = -dim_x,dim_x
       
     do m = -dim_y,dim_y
 
-      do n = -dim_z+start_it(3),-dim_z+max_it(3)
+      do n = -dim_z+start_it(3),-dim_z+max_it(3)-1
  
         r_pos(:) = 0.0_dp
     
@@ -305,7 +297,7 @@ if (my_rank.lt.(num_procs-1)) then
         
         else if (grid(l,m,n).eq.1.0_dp) then
         
-  !        write(rank_id,*) l,m,n         
+       
 
           do k = -dim_x-l,dim_x-l
  
@@ -363,22 +355,17 @@ if (my_rank.lt.(num_procs-1)) then
   
   end do 
 
-  !close(rank_id)
+
 
 else if (my_rank.eq.(num_procs-1)) then
 
-   !???????????????????????????????????????????????????????
-   !rank_id = 20 + my_rank
-   !fname = 'points_rank'//trim(id_str(my_rank))//'.dat'
-   !open(file=fname,unit=rank_id,status='replace') ! unique file for each rank
-   !???????????????????????????????????????????????????????
 
     print*, my_rank,sum(grid(-dim_x:dim_x,-dim_y:dim_y,-dim_z+(split(3)*(num_procs-1)):dim_z))
     do l = -dim_x,dim_x
     
       do m = -dim_y,dim_y
 
-        do n =-dim_z+(split(3)*(num_procs-1))+1,dim_z
+        do n =-dim_z+(split(3)*(num_procs-1)),dim_z
  
         r_pos(:) = 0.0_dp
     
@@ -388,7 +375,7 @@ else if (my_rank.eq.(num_procs-1)) then
           b_0(:) = 0.0_dp
         
         else if (grid(l,m,n).eq.1.0_dp) then
-    !      write(rank_id,*) l,m,n
+   
           do k = -dim_x-l,dim_x-l
  
             r_pos(1) = real(k,kind=dp)
@@ -465,29 +452,12 @@ end do
 
 
 
-
-if (root) then
-  
-  print*,
-  print*, '++++++++++++++++++++++++++++++++++++++++++++++++++'
-  print*, 'Dx:',  1.0_dp-(pfactor_3*b_sum(1)/sum(grid))
-  print*, 'Dy:',  1.0_dp-(pfactor_3*b_sum(2)/sum(grid))
-  print*, 'Dz:',  1.0_dp-(pfactor_3*b_sum(3)/sum(grid))
-  print*, '++++++++++++++++++++++++++++++++++++++++++++++++++'
-  print*,
-  print*, 'Sum(D_i):', sum(1.0_dp-(pfactor_3*b_sum(:)/sum(grid)))
-
-
-end if 
-
 time_stop = MPI_wtime()
 
 if (root) then
-print*, 
-print*, 'Hey Listen!'
-print*,
+
 print*, 'total time:', time_stop-time_start,'seconds'
-print*,
+
 end if
 
 ! deallocate arrays
